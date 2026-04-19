@@ -1,5 +1,11 @@
+import easyaccept.EasyAccept;
+
 public class Main {
     public static void main(String[] args) {
-        System.out.println("O MyFood vai nascer!");
+        String[] arquivosDeTeste = new String[] {
+                "Facade",
+                "testes/us1_1.txt"
+        };
+        EasyAccept.main(arquivosDeTeste);
     }
 }
