@@ -36,6 +36,6 @@ Para validar as funcionalidades através dos testes de aceitação:
     - O sistema executará automaticamente a bateria de testes de aceitação (US1 a US4), incluindo os testes de persistência.
     - O resultado detalhado de cada suite aparecerá no console.
 
-## 📝 Autor
+## Autor
 
 Desenvolvido por Yuri Mota.
