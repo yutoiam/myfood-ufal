@@ -33,8 +33,8 @@ Para validar as funcionalidades através dos testes de aceitação:
 1. Certifique-se de ter o Java instalado e o arquivo `easyaccept.jar` no seu classpath.
 2. Compile o projeto.
 3. Execute a classe `Main.java`.
-    - O sistema carregará os scripts de teste localizados em `testes/usX_X.txt`.
-    - O resultado aparecerá no console indicando `OK` para todos os testes aprovados.
+    - O sistema executará automaticamente a bateria de testes de aceitação (US1 a US4), incluindo os testes de persistência.
+    - O resultado detalhado de cada suite aparecerá no console.
 
 ## 📝 Autor
 
