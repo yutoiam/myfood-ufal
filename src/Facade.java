@@ -2,6 +2,7 @@ import entidades.Empresa;
 import entidades.Pedido;
 import entidades.Produto;
 import entidades.Usuario;
+import entidades.Entrega;
 
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
@@ -17,11 +18,13 @@ public class Facade {
     private List<Usuario> usuarios;
     private List<Empresa> empresas;
     private List<Pedido> pedidos;
+    private List<Entrega> entregas;
 
     public Facade() {
         this.usuarios = new ArrayList<>();
         this.empresas = new ArrayList<>();
         this.pedidos = new ArrayList<>();
+        this.entregas = new ArrayList<>();
         carregarDados();
     }
 
@@ -29,9 +32,11 @@ public class Facade {
         this.usuarios.clear();
         this.empresas.clear();
         this.pedidos.clear();
+        this.entregas.clear();
         new File("usuarios.xml").delete();
         new File("empresas.xml").delete();
         new File("pedidos.xml").delete();
+        new File("entregas.xml").delete();
     }
 
     public void encerrarSistema() {
@@ -52,6 +57,10 @@ public class Facade {
             XMLEncoder encoderP = new XMLEncoder(new BufferedOutputStream(new FileOutputStream("pedidos.xml")));
             encoderP.writeObject(this.pedidos);
             encoderP.close();
+
+            XMLEncoder encoderEn = new XMLEncoder(new BufferedOutputStream(new FileOutputStream("entregas.xml")));
+            encoderEn.writeObject(this.entregas);
+            encoderEn.close();
         } catch (Exception e) {
             System.out.println("Erro ao salvar dados no XML: " + e.getMessage());
         }
@@ -80,6 +89,13 @@ public class Facade {
                 this.pedidos = (List<Pedido>) decoderP.readObject();
                 decoderP.close();
             }
+
+            File fEntregas = new File("entregas.xml");
+            if (fEntregas.exists()) {
+                XMLDecoder decoderEn = new XMLDecoder(new BufferedInputStream(new FileInputStream("entregas.xml")));
+                this.entregas = (List<Entrega>) decoderEn.readObject();
+                decoderEn.close();
+            }
         } catch (Exception e) {
             System.out.println("Erro ao carregar dados do XML: " + e.getMessage());
         }
@@ -101,6 +117,25 @@ public class Facade {
         verificarEmailDuplicado(email);
         int novoId = usuarios.size() + 1;
         Usuario novoUsuario = new Usuario(novoId, nome, email, senha, endereco, cpf);
+        usuarios.add(novoUsuario);
+    }
+
+    public void criarUsuario(String nome, String email, String senha, String endereco, String veiculo, String placa) throws Exception {
+        validarDadosComuns(nome, email, senha, endereco);
+
+        if (veiculo == null || veiculo.trim().isEmpty()) throw new Exception("Veiculo invalido");
+        if (placa == null || placa.trim().isEmpty()) throw new Exception("Placa invalido");
+
+        for (Usuario u : usuarios) {
+            if (u.getPlaca() != null && u.getPlaca().equals(placa)) {
+                throw new Exception("Placa invalido");
+            }
+        }
+
+        verificarEmailDuplicado(email);
+
+        int novoId = usuarios.size() + 1;
+        Usuario novoUsuario = new Usuario(novoId, nome, email, senha, endereco, veiculo, placa);
         usuarios.add(novoUsuario);
     }
 
@@ -133,15 +168,19 @@ public class Facade {
 
     public String getAtributoUsuario(int id, String atributo) throws Exception {
         Usuario u = buscarUsuarioPorId(id);
-        if (atributo.equals("nome")) return u.getNome();
-        if (atributo.equals("email")) return u.getEmail();
-        if (atributo.equals("senha")) return u.getSenha();
-        if (atributo.equals("endereco")) return u.getEndereco();
-        if (atributo.equals("cpf")) {
-            if (u.getCpf() == null) throw new Exception("Usuario nao possui cpf");
-            return u.getCpf();
+        switch (atributo) {
+            case "nome": return u.getNome();
+            case "email": return u.getEmail();
+            case "senha": return u.getSenha();
+            case "endereco": return u.getEndereco();
+            case "veiculo": return u.getVeiculo();
+            case "placa": return u.getPlaca();
+            case "cpf":
+                if (u.getCpf() == null) throw new Exception("Usuario nao possui cpf");
+                return u.getCpf();
+            default:
+                return "Atributo não mapeado";
         }
-        return "Atributo não mapeado";
     }
 
     private Usuario buscarUsuarioPorId(int id) throws Exception {
@@ -158,12 +197,13 @@ public class Facade {
         return null;
     }
 
-    public int criarEmpresa(String tipoEmpresa, int donoId, String nome, String endereco, String tipoCozinha) throws Exception {
+    private void validarDadosBasicosEmpresa(String tipoEmpresa, int donoId, String nome, String endereco) throws Exception {
         if (tipoEmpresa == null || tipoEmpresa.trim().isEmpty()) throw new Exception("Tipo de empresa invalido");
         if (nome == null || nome.trim().isEmpty()) throw new Exception("Nome invalido");
-        if (endereco == null || endereco.trim().isEmpty()) throw new Exception("Endereco invalido");
-        if (tipoCozinha == null || tipoCozinha.trim().isEmpty()) throw new Exception("Tipo de cozinha invalido");
+        if (endereco == null || endereco.trim().isEmpty()) throw new Exception("Endereco da empresa invalido");
+    }
 
+    private void validarDuplicatasEDono(int donoId, String nome, String endereco) throws Exception {
         Usuario dono = buscarUsuarioPorId(donoId);
         if (dono.getCpf() == null || dono.getCpf().trim().isEmpty()) {
             throw new Exception("Usuario nao pode criar uma empresa");
@@ -173,18 +213,83 @@ public class Facade {
             if (emp.getNome().equals(nome)) {
                 if (emp.getDonoId() != donoId) {
                     throw new Exception("Empresa com esse nome ja existe");
-                } else {
-                    if (emp.getEndereco().equals(endereco)) {
-                        throw new Exception("Proibido cadastrar duas empresas com o mesmo nome e local");
-                    }
+                } else if (emp.getEndereco().equals(endereco)) {
+                    throw new Exception("Proibido cadastrar duas empresas com o mesmo nome e local");
                 }
             }
         }
+    }
+
+    private void validarHorario(String abre, String fecha) throws Exception {
+        if (abre == null || fecha == null) throw new Exception("Horario invalido");
+        if (abre.length() != 5 || abre.indexOf(':') != 2) throw new Exception("Formato de hora invalido");
+        if (fecha.length() != 5 || fecha.indexOf(':') != 2) throw new Exception("Formato de hora invalido");
+
+        try {
+            int hA = Integer.parseInt(abre.substring(0, 2));
+            int mA = Integer.parseInt(abre.substring(3, 5));
+            int hF = Integer.parseInt(fecha.substring(0, 2));
+            int mF = Integer.parseInt(fecha.substring(3, 5));
+
+            if (hA < 0 || hA > 23 || mA < 0 || mA > 59) throw new Exception("Horario invalido");
+            if (hF < 0 || hF > 23 || mF < 0 || mF > 59) throw new Exception("Horario invalido");
+            if ((hA * 60 + mA) >= (hF * 60 + mF)) throw new Exception("Horario invalido");
+        } catch (NumberFormatException e) {
+            throw new Exception("Formato de hora invalido");
+        }
+    }
+
+    public int criarEmpresa(String tipoEmpresa, int donoId, String nome, String endereco, String tipoCozinha) throws Exception {
+        validarDadosBasicosEmpresa(tipoEmpresa, donoId, nome, endereco);
+        if (tipoCozinha == null || tipoCozinha.trim().isEmpty()) throw new Exception("Tipo de cozinha invalido");
+
+        validarDuplicatasEDono(donoId, nome, endereco);
 
         int novoId = empresas.size() + 1;
         Empresa novaEmpresa = new Empresa(novoId, donoId, nome, tipoCozinha, endereco);
+        novaEmpresa.setTipoEmpresa(tipoEmpresa);
         empresas.add(novaEmpresa);
         return novoId;
+    }
+
+    public int criarEmpresa(String tipoEmpresa, int donoId, String nome, String endereco, String abre, String fecha, String tipoMercado) throws Exception {
+        validarDadosBasicosEmpresa(tipoEmpresa, donoId, nome, endereco);
+        validarHorario(abre, fecha);
+        if (tipoMercado == null || tipoMercado.trim().isEmpty()) throw new Exception("Tipo de mercado invalido");
+
+        validarDuplicatasEDono(donoId, nome, endereco);
+
+        int novoId = empresas.size() + 1;
+        Empresa novaEmpresa = new Empresa(novoId, donoId, nome, null, endereco);
+        novaEmpresa.setTipoEmpresa(tipoEmpresa);
+        novaEmpresa.setAbre(abre);
+        novaEmpresa.setFecha(fecha);
+        novaEmpresa.setTipoMercado(tipoMercado);
+        empresas.add(novaEmpresa);
+        return novoId;
+    }
+
+    public int criarEmpresa(String tipoEmpresa, int donoId, String nome, String endereco, boolean aberto24Horas, int numeroFuncionarios) throws Exception {
+        validarDadosBasicosEmpresa(tipoEmpresa, donoId, nome, endereco);
+        validarDuplicatasEDono(donoId, nome, endereco);
+
+        int novoId = empresas.size() + 1;
+        Empresa novaEmpresa = new Empresa(novoId, donoId, nome, null, endereco);
+        novaEmpresa.setTipoEmpresa(tipoEmpresa);
+        novaEmpresa.setAberto24Horas(aberto24Horas);
+        novaEmpresa.setNumeroFuncionarios(numeroFuncionarios);
+        empresas.add(novaEmpresa);
+        return novoId;
+    }
+
+    public void alterarFuncionamento(int mercadoId, String abre, String fecha) throws Exception {
+        Empresa e = buscarEmpresaPorId(mercadoId);
+        if (e == null || !"mercado".equals(e.getTipoEmpresa())) {
+            throw new Exception("Nao e um mercado valido");
+        }
+        validarHorario(abre, fecha);
+        e.setAbre(abre);
+        e.setFecha(fecha);
     }
 
     public String getAtributoEmpresa(int empresaId, String atributo) throws Exception {
@@ -192,11 +297,18 @@ public class Facade {
         if (e == null) throw new Exception("Empresa nao cadastrada");
         if (atributo == null || atributo.trim().isEmpty()) throw new Exception("Atributo invalido");
 
-        if (atributo.equals("nome")) return e.getNome();
-        if (atributo.equals("tipoCozinha")) return e.getTipoCozinha();
-        if (atributo.equals("endereco")) return e.getEndereco();
-        if (atributo.equals("dono")) return buscarUsuarioPorId(e.getDonoId()).getNome();
-        throw new Exception("Atributo invalido");
+        switch (atributo) {
+            case "nome": return e.getNome();
+            case "tipoCozinha": return e.getTipoCozinha();
+            case "endereco": return e.getEndereco();
+            case "dono": return buscarUsuarioPorId(e.getDonoId()).getNome();
+            case "abre": return e.getAbre();
+            case "fecha": return e.getFecha();
+            case "tipoMercado": return e.getTipoMercado();
+            case "aberto24Horas": return String.valueOf(e.isAberto24Horas());
+            case "numeroFuncionarios": return String.valueOf(e.getNumeroFuncionarios());
+            default: throw new Exception("Atributo invalido");
+        }
     }
 
     public String getEmpresasDoUsuario(int idDono) throws Exception {
@@ -297,10 +409,12 @@ public class Facade {
 
         if (alvo == null) throw new Exception("Produto nao encontrado");
 
-        if (atributo.equals("valor")) return String.format(java.util.Locale.US, "%.2f", alvo.getValor());
-        if (atributo.equals("categoria")) return alvo.getCategoria();
-        if (atributo.equals("empresa")) return emp.getNome();
-        throw new Exception("Atributo nao existe");
+        switch (atributo) {
+            case "valor": return String.format(java.util.Locale.US, "%.2f", alvo.getValor());
+            case "categoria": return alvo.getCategoria();
+            case "empresa": return emp.getNome();
+            default: throw new Exception("Atributo nao existe");
+        }
     }
 
     public String listarProdutos(int empresaId) throws Exception {
@@ -389,23 +503,24 @@ public class Facade {
         Pedido p = buscarPedidoPorId(numero);
         if (p == null) throw new Exception("Pedido nao encontrado");
 
-        if (atributo.equals("cliente")) return buscarUsuarioPorId(p.getClienteId()).getNome();
-        if (atributo.equals("empresa")) return buscarEmpresaPorId(p.getEmpresaId()).getNome();
-        if (atributo.equals("estado")) return p.getEstado();
-        if (atributo.equals("valor")) return String.format(java.util.Locale.US, "%.2f", p.getValorTotal());
-        if (atributo.equals("produtos")) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("{[");
-            boolean primeiro = true;
-            for (Produto prod : p.getProdutos()) {
-                if (!primeiro) sb.append(", ");
-                sb.append(prod.getNome());
-                primeiro = false;
-            }
-            sb.append("]}");
-            return sb.toString();
+        switch (atributo) {
+            case "cliente": return buscarUsuarioPorId(p.getClienteId()).getNome();
+            case "empresa": return buscarEmpresaPorId(p.getEmpresaId()).getNome();
+            case "estado": return p.getEstado();
+            case "valor": return String.format(java.util.Locale.US, "%.2f", p.getValorTotal());
+            case "produtos":
+                StringBuilder sb = new StringBuilder();
+                sb.append("{[");
+                boolean primeiro = true;
+                for (Produto prod : p.getProdutos()) {
+                    if (!primeiro) sb.append(", ");
+                    sb.append(prod.getNome());
+                    primeiro = false;
+                }
+                sb.append("]}");
+                return sb.toString();
+            default: throw new Exception("Atributo nao existe");
         }
-        throw new Exception("Atributo nao existe");
     }
 
     public void fecharPedido(int numero) throws Exception {
@@ -427,6 +542,204 @@ public class Facade {
         boolean removido = p.removerProduto(nomeProduto);
         if (!removido) {
             throw new Exception("Produto nao encontrado");
+        }
+    }
+
+    public void cadastrarEntregador(int empresaId, int entregadorId) throws Exception {
+        Usuario entregador = buscarUsuarioPorId(entregadorId);
+
+        if (entregador.getVeiculo() == null || entregador.getVeiculo().trim().isEmpty()) {
+            throw new Exception("Usuario nao e um entregador");
+        }
+
+        Empresa empresa = buscarEmpresaPorId(empresaId);
+        if (empresa != null) {
+            if (!empresa.getEntregadores().contains(entregadorId)) {
+                empresa.getEntregadores().add(entregadorId);
+            }
+        }
+    }
+
+    public String getEntregadores(int empresaId) throws Exception {
+        Empresa empresa = buscarEmpresaPorId(empresaId);
+        if (empresa == null) throw new Exception("Empresa nao encontrada");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{[");
+        boolean primeiro = true;
+
+        for (int idEntregador : empresa.getEntregadores()) {
+            if (!primeiro) sb.append(", ");
+            Usuario u = buscarUsuarioPorId(idEntregador);
+            sb.append(u.getEmail());
+            primeiro = false;
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
+    public String getEmpresas(int entregadorId) throws Exception {
+        Usuario entregador = buscarUsuarioPorId(entregadorId);
+
+        if (entregador.getVeiculo() == null || entregador.getVeiculo().trim().isEmpty()) {
+            throw new Exception("Usuario nao e um entregador");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{[");
+        boolean primeiro = true;
+
+        for (Empresa emp : empresas) {
+            if (emp.getEntregadores() != null && emp.getEntregadores().contains(entregadorId)) {
+                if (!primeiro) sb.append(", ");
+                sb.append("[").append(emp.getNome()).append(", ").append(emp.getEndereco()).append("]");
+                primeiro = false;
+            }
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
+    public void liberarPedido(int numero) throws Exception {
+        Pedido p = buscarPedidoPorId(numero);
+        if (p == null) throw new Exception("Pedido nao encontrado");
+
+        if (p.getEstado().equals("pronto")) {
+            throw new Exception("Pedido ja liberado");
+        }
+        if (!p.getEstado().equals("preparando")) {
+            throw new Exception("Nao e possivel liberar um produto que nao esta sendo preparado");
+        }
+
+        p.setEstado("pronto");
+    }
+
+    public int obterPedido(int entregadorId) throws Exception {
+        Usuario entregador = buscarUsuarioPorId(entregadorId);
+        if (entregador.getVeiculo() == null || entregador.getVeiculo().trim().isEmpty()) {
+            throw new Exception("Usuario nao e um entregador");
+        }
+
+        List<Integer> empresasDoEntregador = new ArrayList<>();
+        for (Empresa emp : empresas) {
+            if (emp.getEntregadores() != null && emp.getEntregadores().contains(entregadorId)) {
+                empresasDoEntregador.add(emp.getId());
+            }
+        }
+
+        if (empresasDoEntregador.isEmpty()) {
+            throw new Exception("Entregador nao estar em nenhuma empresa.");
+        }
+
+        Pedido melhorPedido = null;
+        boolean temPrioridadeFarmacia = false;
+
+        for (Pedido p : pedidos) {
+            if (p.getEstado().equals("pronto") && empresasDoEntregador.contains(p.getEmpresaId())) {
+                Empresa emp = buscarEmpresaPorId(p.getEmpresaId());
+                boolean ehFarmacia = "farmacia".equals(emp.getTipoEmpresa());
+
+                if (ehFarmacia) {
+                    if (!temPrioridadeFarmacia) {
+                        melhorPedido = p;
+                        temPrioridadeFarmacia = true;
+                    } else if (p.getNumero() < melhorPedido.getNumero()) {
+                        melhorPedido = p;
+                    }
+                } else if (!temPrioridadeFarmacia) {
+                    if (melhorPedido == null || p.getNumero() < melhorPedido.getNumero()) {
+                        melhorPedido = p;
+                    }
+                }
+            }
+        }
+
+        if (melhorPedido == null) {
+            throw new Exception("Nao existe pedido para entrega");
+        }
+
+        return melhorPedido.getNumero();
+    }
+
+    private Entrega buscarEntregaPorId(int id) {
+        for (Entrega e : entregas) {
+            if (e.getId() == id) return e;
+        }
+        return null;
+    }
+
+    public int criarEntrega(int pedidoId, int entregadorId, String destino) throws Exception {
+        Pedido p = buscarPedidoPorId(pedidoId);
+        if (p == null || !p.getEstado().equals("pronto")) {
+            throw new Exception("Pedido nao esta pronto para entrega");
+        }
+
+        Usuario entregador = buscarUsuarioPorId(entregadorId);
+        if (entregador.getVeiculo() == null || entregador.getVeiculo().trim().isEmpty()) {
+            throw new Exception("Nao e um entregador valido");
+        }
+
+        for (Entrega ent : entregas) {
+            if (ent.getEntregadorId() == entregadorId) {
+                Pedido pedidoDaEntrega = buscarPedidoPorId(ent.getPedidoId());
+                if (pedidoDaEntrega != null && pedidoDaEntrega.getEstado().equals("entregando")) {
+                    throw new Exception("Entregador ainda em entrega");
+                }
+            }
+        }
+
+        String destinoFinal = destino;
+        if (destinoFinal == null || destinoFinal.trim().isEmpty()) {
+            Usuario cliente = buscarUsuarioPorId(p.getClienteId());
+            destinoFinal = cliente.getEndereco();
+        }
+
+        int novoId = entregas.size() + 1;
+        Entrega novaEntrega = new Entrega(novoId, pedidoId, entregadorId, destinoFinal);
+        entregas.add(novaEntrega);
+
+        p.setEstado("entregando");
+
+        return novoId;
+    }
+
+    public String getEntrega(int id, String atributo) throws Exception {
+        if (atributo == null || atributo.trim().isEmpty()) throw new Exception("Atributo invalido");
+
+        Entrega e = buscarEntregaPorId(id);
+        if (e == null) throw new Exception("Nao existe nada para ser entregue com esse id");
+
+        Pedido p = buscarPedidoPorId(e.getPedidoId());
+
+        switch (atributo) {
+            case "cliente": return buscarUsuarioPorId(p.getClienteId()).getNome();
+            case "empresa": return buscarEmpresaPorId(p.getEmpresaId()).getNome();
+            case "pedido": return String.valueOf(p.getNumero());
+            case "entregador": return buscarUsuarioPorId(e.getEntregadorId()).getNome();
+            case "destino": return e.getDestino();
+            case "produtos": return getPedidos(p.getNumero(), "produtos");
+            default: throw new Exception("Atributo nao existe");
+        }
+    }
+
+    public int getIdEntrega(int pedidoId) throws Exception {
+        for (Entrega e : entregas) {
+            if (e.getPedidoId() == pedidoId) {
+                return e.getId();
+            }
+        }
+        throw new Exception("Nao existe entrega com esse id");
+    }
+
+    public void entregar(int entregaId) throws Exception {
+        Entrega e = buscarEntregaPorId(entregaId);
+        if (e == null) {
+            throw new Exception("Nao existe nada para ser entregue com esse id");
+        }
+
+        Pedido p = buscarPedidoPorId(e.getPedidoId());
+        if (p != null) {
+            p.setEstado("entregue");
         }
     }
 }

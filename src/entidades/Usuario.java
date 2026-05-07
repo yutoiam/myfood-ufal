@@ -7,6 +7,8 @@ public class Usuario {
     private String senha;
     private String endereco;
     private String cpf;
+    private String veiculo;
+    private String placa;
 
     public Usuario() {
     }
@@ -18,6 +20,16 @@ public class Usuario {
         this.senha = senha;
         this.endereco = endereco;
         this.cpf = cpf;
+    }
+
+    public Usuario(int id, String nome, String email, String senha, String endereco, String veiculo, String placa) {
+        this.id = id;
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+        this.endereco = endereco;
+        this.veiculo = veiculo;
+        this.placa = placa;
     }
 
     public int getId() { return id; }
@@ -32,4 +44,8 @@ public class Usuario {
     public void setEndereco(String endereco) { this.endereco = endereco; }
     public String getCpf() { return cpf; }
     public void setCpf(String cpf) { this.cpf = cpf; }
+    public String getVeiculo() { return veiculo; }
+    public void setVeiculo(String veiculo) { this.veiculo = veiculo; }
+    public String getPlaca() { return placa; }
+    public void setPlaca(String placa) { this.placa = placa; }
 }
