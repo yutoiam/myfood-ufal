@@ -13,7 +13,7 @@ O sistema atualmente suporta as seguintes operações:
 
 ## Arquitetura e Design
 
-O projeto foi construído seguindo princípios de **Clean Code** e padrões de projeto para garantir manutenibilidade:
+O projeto foi construído seguindo os princípios de **Clean Code** e padrões de projeto para garantir manutenibilidade:
 
 - **Facade Pattern:** Centraliza toda a lógica do sistema em uma única interface (`Facade.java`), facilitando a integração com scripts de testes automatizados.
 - **Persistência com XMLEncoder/Decoder:** Implementação de serialização para garantir que os dados não sejam perdidos entre execuções.
