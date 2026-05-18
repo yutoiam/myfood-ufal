@@ -13,11 +13,13 @@ O sistema atualmente suporta as seguintes operações:
 
 ## Arquitetura e Design
 
-O projeto foi construído seguindo os princípios de **Clean Code** e padrões de projeto para garantir manutenibilidade:
+O projeto foi construído seguindo princípios de **Clean Code** e padrões de projeto para garantir escalabilidade e manutenibilidade:
 
-- **Facade Pattern:** Centraliza toda a lógica do sistema em uma única interface (`Facade.java`), facilitando a integração com scripts de testes automatizados.
+- **Camada de Controle (Controllers):** Isolamento total das regras de negócio em classes especialistas (`UsuarioController`, `EmpresaController` e `PedidoController`), evitando a centralização excessiva.
+- **Facade Pattern:** A `Facade.java` atua exclusivamente como porta de entrada do sistema, delegando chamadas para os controladores e facilitando a integração com scripts de testes automatizados.
+- **Tratamento de Exceções Customizado:** Implementação da classe `MyFoodException` para o correto lançamento e tratamento de erros de negócio, substituindo exceções genéricas.
 - **Persistência com XMLEncoder/Decoder:** Implementação de serialização para garantir que os dados não sejam perdidos entre execuções.
-- **Design Orientado a Objetos:** Divisão clara de responsabilidades entre as entidades `Usuario`, `Empresa`, `Produto`, `Pedido` e `Entrega`.
+- **Design Orientado a Objetos:** Divisão clara de responsabilidades estruturais nas entidades `Usuario`, `Empresa`, `Produto`, `Pedido` e `Entrega`.
 
 ## Tecnologias Utilizadas
 
@@ -33,8 +35,8 @@ Para validar as funcionalidades através dos testes de aceitação:
 1. Certifique-se de ter o Java instalado e o arquivo `easyaccept.jar` no seu classpath.
 2. Compile o projeto.
 3. Execute a classe `Main.java`.
-    - O sistema executará automaticamente a bateria completa de testes de aceitação (US1 a US8), incluindo os testes de persistência.
-    - O resultado detalhado de cada suite aparecerá no console.
+   - O sistema executará automaticamente a bateria completa de testes de aceitação (US1 a US8), incluindo os testes de persistência.
+   - O resultado detalhado de cada suite aparecerá no console.
 
 ## Autor
 
